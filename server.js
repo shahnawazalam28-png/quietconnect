@@ -1,0 +1,91 @@
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+app.use(express.static("public"));
+
+let waitingUser = null;
+
+io.on("connection", (socket) => {
+  console.log("User connected:", socket.id);
+
+  socket.on("userInfo", (data) => {
+    socket.name = data.name;
+    socket.location = data.location;
+
+    if (waitingUser) {
+      socket.partner = waitingUser;
+      waitingUser.partner = socket;
+
+      socket.emit("connected", {
+        partnerName: waitingUser.name,
+        partnerLocation: waitingUser.location
+      });
+
+      waitingUser.emit("connected", {
+        partnerName: socket.name,
+        partnerLocation: socket.location
+      });
+
+      waitingUser = null;
+    } else {
+      waitingUser = socket;
+    }
+  });
+
+  socket.on("message", (msg) => {
+    if (socket.partner) {
+      socket.partner.emit("message", msg);
+    }
+  });
+
+  socket.on("skip", () => {
+    if (socket.partner) {
+      socket.partner.emit("partnerDisconnected");
+      socket.partner.partner = null;
+    }
+
+    socket.partner = null;
+
+    if (waitingUser && waitingUser !== socket) {
+      // If someone is already waiting, connect them
+      socket.partner = waitingUser;
+      waitingUser.partner = socket;
+
+      socket.emit("connected", {
+        partnerName: waitingUser.name,
+        partnerLocation: waitingUser.location
+      });
+
+      waitingUser.emit("connected", {
+        partnerName: socket.name,
+        partnerLocation: socket.location
+      });
+
+      waitingUser = null;
+    } else {
+      waitingUser = socket;
+    }
+  });
+
+  socket.on("disconnect", () => {
+    if (socket.partner) {
+      socket.partner.emit("partnerDisconnected");
+      socket.partner.partner = null;
+    }
+
+    if (waitingUser === socket) {
+      waitingUser = null;
+    }
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+
+server.listen(PORT, () => {
+  console.log("Server running on port " + PORT);
+});
