@@ -2,6 +2,7 @@
 <html>
 <head>
   <title>QuietConnect</title>
+
   <style>
     body {
       margin: 0;
@@ -86,15 +87,14 @@
 
 <div class="card">
 
+  <!-- ENTRY -->
   <div id="consent">
     <h2>🌿 QuietConnect 🌴</h2>
 
     <div class="disclaimer">
       Many people are naturally shy or experience social anxiety.
-      Starting conversations can feel overwhelming.
-      <br><br>
-      QuietConnect is a respectful space for adults (18+) who want to take a small,
-      brave step forward. Begin by sharing your name and location.
+      QuietConnect is a respectful space for adults (18+) who want
+      to take a small step forward and connect with someone new.
       You may skip anytime.
     </div>
 
@@ -109,6 +109,7 @@
     <button class="primary" onclick="start()">Enter</button>
   </div>
 
+  <!-- CHAT -->
   <div id="chat">
     <h2>🌿 QuietConnect 🌴</h2>
     <div id="status">Waiting for partner...</div>
@@ -122,6 +123,7 @@
 
     <input id="input" placeholder="Type message...">
     <button class="primary" onclick="send()">Send</button>
+    <button class="secondary" onclick="skip()">Skip</button>
   </div>
 
 </div>
@@ -133,7 +135,14 @@ let localStream;
 let peerConnection;
 
 const servers = {
-  iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" },
+    {
+      urls: "turn:openrelay.metered.ca:80",
+      username: "openrelayproject",
+      credential: "openrelayproject"
+    }
+  ]
 };
 
 function start() {
@@ -217,6 +226,31 @@ socket.on("ice-candidate", async (candidate) => {
 socket.on("message", (msg) => {
   document.getElementById("messages").innerHTML += "<div>Stranger: " + msg + "</div>";
 });
+
+socket.on("partnerDisconnected", () => {
+  cleanup();
+});
+
+function cleanup() {
+  if (peerConnection) {
+    peerConnection.close();
+    peerConnection = null;
+  }
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+  }
+
+  document.getElementById("videos").style.display = "none";
+  document.getElementById("remoteVideo").srcObject = null;
+  document.getElementById("localVideo").srcObject = null;
+  document.getElementById("messages").innerHTML = "";
+  document.getElementById("status").innerText = "Looking for new partner...";
+}
+
+function skip() {
+  cleanup();
+  socket.emit("skip");
+}
 
 function send() {
   const input = document.getElementById("input");

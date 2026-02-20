@@ -11,22 +11,23 @@ app.use(express.static("public"));
 let waitingUser = null;
 
 io.on("connection", (socket) => {
+
   socket.on("userInfo", (data) => {
     socket.name = data.name;
     socket.location = data.location;
 
-    if (waitingUser) {
+    if (waitingUser && waitingUser !== socket) {
+
       socket.partner = waitingUser;
       waitingUser.partner = socket;
 
-      // First user becomes caller
+      // First connected user becomes caller
       waitingUser.emit("connected", {
         partnerName: socket.name,
         partnerLocation: socket.location,
         isCaller: true
       });
 
-      // Second user receives
       socket.emit("connected", {
         partnerName: waitingUser.name,
         partnerLocation: waitingUser.location,
@@ -34,6 +35,7 @@ io.on("connection", (socket) => {
       });
 
       waitingUser = null;
+
     } else {
       waitingUser = socket;
     }
@@ -63,6 +65,15 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("skip", () => {
+    if (socket.partner) {
+      socket.partner.emit("partnerDisconnected");
+      socket.partner.partner = null;
+      socket.partner = null;
+    }
+    waitingUser = socket;
+  });
+
   socket.on("disconnect", () => {
     if (socket.partner) {
       socket.partner.emit("partnerDisconnected");
@@ -72,6 +83,7 @@ io.on("connection", (socket) => {
       waitingUser = null;
     }
   });
+
 });
 
 const PORT = process.env.PORT || 3000;
