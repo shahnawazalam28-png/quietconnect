@@ -23,6 +23,8 @@
       text-align: center;
     }
 
+    h2 { margin: 10px 0; }
+
     .disclaimer {
       font-size: 13px;
       text-align: left;
@@ -74,6 +76,7 @@
       padding: 8px;
       text-align: left;
       margin: 10px 0;
+      font-size: 14px;
     }
 
     #status {
@@ -81,13 +84,19 @@
       color: #555;
       margin-bottom: 8px;
     }
+
+    .support-text {
+      font-size: 12px;
+      color: #666;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
 
 <div class="card">
 
-  <!-- ENTRY -->
+  <!-- ENTRY SCREEN -->
   <div id="consent">
     <h2>🌿 QuietConnect 🌴</h2>
 
@@ -109,7 +118,7 @@
     <button class="primary" onclick="start()">Enter</button>
   </div>
 
-  <!-- CHAT -->
+  <!-- CHAT SCREEN -->
   <div id="chat">
     <h2>🌿 QuietConnect 🌴</h2>
     <div id="status">Waiting for partner...</div>
@@ -124,6 +133,14 @@
     <input id="input" placeholder="Type message...">
     <button class="primary" onclick="send()">Send</button>
     <button class="secondary" onclick="skip()">Skip</button>
+
+    <div class="support-text">
+      If this space helped you, you may support it 🌿
+    </div>
+
+    <a href="https://buymeacoffee.com/shyconnect" target="_blank">
+      <button class="secondary">💝 Support QuietConnect</button>
+    </a>
   </div>
 
 </div>
@@ -197,8 +214,6 @@ function createPeer() {
       makingOffer = true;
       await pc.setLocalDescription(await pc.createOffer());
       socket.emit("offer", pc.localDescription);
-    } catch (err) {
-      console.error(err);
     } finally {
       makingOffer = false;
     }
