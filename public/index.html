@@ -33,6 +33,10 @@
       margin-bottom: 10px;
     }
 
+    .disclaimer p {
+      margin-bottom: 10px;
+    }
+
     input {
       width: 90%;
       padding: 8px;
@@ -101,16 +105,35 @@
     <h2>🌿 QuietConnect 🌴</h2>
 
     <div class="disclaimer">
-      Many people are naturally shy or experience social anxiety.
-      QuietConnect is a respectful space for adults (18+) who want
-      to take a small step forward and connect with someone new.
-      You may skip anytime.
+      <p>
+        The world is full of different personalities.
+        Some of us are naturally quiet.
+        Some of us experience social anxiety.
+      </p>
+
+      <p>
+        Starting conversations or meeting new people can feel overwhelming.
+        QuietConnect is a gentle and respectful space created for adults (18+)
+        who want to take a small, brave step forward.
+      </p>
+
+      <p>
+        Here, you can speak with someone from a different background —
+        someone who, like you, is also choosing growth.
+        You may skip at any time.
+      </p>
     </div>
 
-    <label style="font-size:13px;">
-      <input type="checkbox" id="acknowledge">
-      I confirm I am 18+ and choosing to take a positive step forward.
-    </label>
+    <div style="margin-top: 15px; text-align: left;">
+      <p style="font-size: 13px; margin-bottom: 6px;">
+        Before entering, please confirm:
+      </p>
+
+      <label style="font-size: 13px; display: flex; align-items: center; gap: 8px;">
+        <input type="checkbox" id="acknowledge">
+        I confirm that I am 18+ and I am choosing to take a positive step forward.
+      </label>
+    </div>
 
     <input id="username" placeholder="Your name">
     <input id="location" placeholder="Your location">
