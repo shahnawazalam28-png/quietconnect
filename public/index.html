@@ -2,6 +2,13 @@
 <html>
 <head>
   <title>QuietConnect</title>
+
+  <!-- Olive + Date favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,
+  <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
+    <text y='70' font-size='70'>🌿🌴</text>
+  </svg>">
+
   <style>
     body {
       margin: 0;
@@ -15,7 +22,7 @@
 
     .card {
       background: white;
-      width: 400px;
+      width: 420px;
       padding: 25px;
       border-radius: 12px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.08);
@@ -49,7 +56,7 @@
       padding: 10px 18px;
       border: none;
       border-radius: 6px;
-      margin: 5px;
+      margin: 8px 5px;
       cursor: pointer;
       font-weight: 500;
     }
@@ -68,7 +75,7 @@
     }
 
     #messages {
-      height: 250px;
+      height: 260px;
       overflow-y: auto;
       margin: 15px 0;
       padding: 10px;
@@ -96,27 +103,73 @@
     #status {
       font-size: 13px;
       color: #666;
+      margin-bottom: 10px;
+    }
+
+    .disclaimer {
+      font-size: 13px;
+      line-height: 1.6;
+      text-align: left;
+      margin-top: 10px;
+      color: #444;
+    }
+
+    .checkbox {
+      text-align: left;
+      font-size: 13px;
+      margin-top: 10px;
     }
   </style>
 </head>
+
 <body>
 
 <div class="card">
 
+  <!-- ENTRY SCREEN -->
   <div id="consent">
-    <h2>QuietConnect 🌿</h2>
-    <p>A calm space for shy adults (18+)</p>
+    <h2>
+      <span style="color:#3a7d44;">🌿</span>
+      QuietConnect
+      <span style="color:#8b5e3c;">🌴</span>
+    </h2>
+
+    <div class="disclaimer">
+      The world is filled with different personalities.  
+      Many people are naturally shy or experience social anxiety.
+      For some, starting conversations or meeting new people can feel overwhelming.
+      <br><br>
+      QuietConnect is a calm, respectful space created for adults (18+) who want to take a small,
+      brave step forward. Here, you can connect with someone from a different background —
+      someone who, like you, is also choosing growth.
+      <br><br>
+      There is no pressure here. Begin simply by sharing your name and where you're from.
+      If you ever feel uncomfortable, you may skip and connect with someone new.
+    </div>
+
+    <div class="checkbox">
+      <label>
+        <input type="checkbox" id="acknowledge" />
+        I confirm that I am 18 years or older, identify as shy or socially anxious,
+        and I am choosing to take a positive step forward.
+      </label>
+    </div>
 
     <input id="username" placeholder="Your name or nickname" />
     <input id="location" placeholder="Your city / country" />
 
-    <button class="primary" onclick="start()">Enter</button>
+    <button class="primary" onclick="start()">Enter QuietConnect</button>
   </div>
 
+  <!-- CHAT SCREEN -->
   <div id="chat">
-    <h2>QuietConnect 🌿</h2>
-    <div id="status">Waiting for partner...</div>
+    <h2>
+      <span style="color:#3a7d44;">🌿</span>
+      QuietConnect
+      <span style="color:#8b5e3c;">🌴</span>
+    </h2>
 
+    <div id="status">Waiting for partner...</div>
     <div id="messages"></div>
 
     <input id="input" placeholder="Type gently..." />
@@ -142,6 +195,12 @@
   function start() {
     const nameInput = document.getElementById("username").value.trim();
     const locationInput = document.getElementById("location").value.trim();
+    const acknowledge = document.getElementById("acknowledge").checked;
+
+    if (!acknowledge) {
+      alert("Please confirm the acknowledgement before entering.");
+      return;
+    }
 
     if (!nameInput || !locationInput) {
       alert("Please enter your name and location.");
@@ -169,7 +228,7 @@
 
   socket.on("partnerDisconnected", () => {
     messages.innerHTML = "";
-    status.innerText = "Partner left. Waiting for new partner...";
+    status.innerText = "Partner left. Waiting for someone new...";
   });
 
   function send() {
