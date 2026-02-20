@@ -2,12 +2,6 @@
 <html>
 <head>
   <title>QuietConnect</title>
-
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,
-  <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
-    <text y='70' font-size='70'>🌿🌴</text>
-  </svg>">
-
   <style>
     body {
       margin: 0;
@@ -27,8 +21,6 @@
       box-shadow: 0 10px 25px rgba(0,0,0,0.08);
       text-align: center;
     }
-
-    h2 { margin: 10px 0; }
 
     .disclaimer {
       font-size: 13px;
@@ -81,7 +73,6 @@
       padding: 8px;
       text-align: left;
       margin: 10px 0;
-      font-size: 14px;
     }
 
     #status {
@@ -89,49 +80,37 @@
       color: #555;
       margin-bottom: 8px;
     }
-
   </style>
 </head>
-
 <body>
 
 <div class="card">
 
-  <!-- ENTRY SCREEN -->
   <div id="consent">
     <h2>🌿 QuietConnect 🌴</h2>
 
     <div class="disclaimer">
-      The world is filled with different personalities.  
-      Many people are naturally shy or experience social anxiety.  
-      For some, starting conversations or meeting new people can feel overwhelming.
+      Many people are naturally shy or experience social anxiety.
+      Starting conversations can feel overwhelming.
       <br><br>
-      QuietConnect is a calm and respectful space created for adults (18+) 
-      who want to take a small, brave step forward.  
-      Here, you can talk to someone from a different background — 
-      someone who, like you, also wants to grow.
-      <br><br>
-      Start simply by sharing your name and where you're from.  
-      You may skip anytime if you feel uncomfortable.
+      QuietConnect is a respectful space for adults (18+) who want to take a small,
+      brave step forward. Begin by sharing your name and location.
+      You may skip anytime.
     </div>
 
     <label style="font-size:13px;">
       <input type="checkbox" id="acknowledge">
-      I confirm that I am 18+ and I am choosing to take a positive step forward.
+      I confirm I am 18+ and choosing to take a positive step forward.
     </label>
-
-    <br>
 
     <input id="username" placeholder="Your name">
     <input id="location" placeholder="Your location">
 
-    <button class="primary" onclick="start()">Enter QuietConnect</button>
+    <button class="primary" onclick="start()">Enter</button>
   </div>
 
-  <!-- CHAT + VIDEO SCREEN -->
   <div id="chat">
     <h2>🌿 QuietConnect 🌴</h2>
-
     <div id="status">Waiting for partner...</div>
 
     <div id="videos">
@@ -143,7 +122,6 @@
 
     <input id="input" placeholder="Type message...">
     <button class="primary" onclick="send()">Send</button>
-    <button class="secondary" onclick="skip()">Skip</button>
   </div>
 
 </div>
@@ -151,39 +129,23 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
 const socket = io();
-
 let localStream;
 let peerConnection;
-let isCaller = false;
 
 const servers = {
-  iceServers: [
-    { urls: "stun:stun.l.google.com:19302" }
-  ]
+  iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
 };
-
-const consent = document.getElementById("consent");
-const chat = document.getElementById("chat");
-const status = document.getElementById("status");
-const messages = document.getElementById("messages");
 
 function start() {
   const name = document.getElementById("username").value.trim();
   const location = document.getElementById("location").value.trim();
   const ack = document.getElementById("acknowledge").checked;
 
-  if (!ack) {
-    alert("Please confirm acknowledgement.");
-    return;
-  }
+  if (!ack) return alert("Please confirm acknowledgement.");
+  if (!name || !location) return alert("Enter name and location.");
 
-  if (!name || !location) {
-    alert("Please enter name and location.");
-    return;
-  }
-
-  consent.style.display = "none";
-  chat.style.display = "block";
+  document.getElementById("consent").style.display = "none";
+  document.getElementById("chat").style.display = "block";
 
   socket.emit("userInfo", { name, location });
 }
@@ -206,7 +168,9 @@ function createPeer() {
   });
 
   peerConnection.ontrack = (event) => {
-    document.getElementById("remoteVideo").srcObject = event.streams[0];
+    const remoteVideo = document.getElementById("remoteVideo");
+    remoteVideo.srcObject = event.streams[0];
+    remoteVideo.play().catch(()=>{});
   };
 
   peerConnection.onicecandidate = (event) => {
@@ -217,17 +181,17 @@ function createPeer() {
 }
 
 socket.on("connected", async (data) => {
-  status.innerText = "Connected with " + data.partnerName + " from " + data.partnerLocation;
+  document.getElementById("status").innerText =
+    "Connected with " + data.partnerName;
 
   await initMedia();
   createPeer();
 
-  // First user becomes caller
-  isCaller = true;
-
-  const offer = await peerConnection.createOffer();
-  await peerConnection.setLocalDescription(offer);
-  socket.emit("offer", offer);
+  if (data.isCaller) {
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+    socket.emit("offer", offer);
+  }
 });
 
 socket.on("offer", async (offer) => {
@@ -251,25 +215,15 @@ socket.on("ice-candidate", async (candidate) => {
 });
 
 socket.on("message", (msg) => {
-  messages.innerHTML += "<div>Stranger: " + msg + "</div>";
-});
-
-socket.on("partnerDisconnected", () => {
-  location.reload();
+  document.getElementById("messages").innerHTML += "<div>Stranger: " + msg + "</div>";
 });
 
 function send() {
   const input = document.getElementById("input");
-  const text = input.value.trim();
-  if (!text) return;
-
-  socket.emit("message", text);
-  messages.innerHTML += "<div>You: " + text + "</div>";
+  if (!input.value.trim()) return;
+  socket.emit("message", input.value);
+  document.getElementById("messages").innerHTML += "<div>You: " + input.value + "</div>";
   input.value = "";
-}
-
-function skip() {
-  location.reload();
 }
 </script>
 

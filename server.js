@@ -11,7 +11,34 @@ app.use(express.static("public"));
 let waitingUser = null;
 
 io.on("connection", (socket) => {
-  // WebRTC signaling
+  socket.on("userInfo", (data) => {
+    socket.name = data.name;
+    socket.location = data.location;
+
+    if (waitingUser) {
+      socket.partner = waitingUser;
+      waitingUser.partner = socket;
+
+      // First user becomes caller
+      waitingUser.emit("connected", {
+        partnerName: socket.name,
+        partnerLocation: socket.location,
+        isCaller: true
+      });
+
+      // Second user receives
+      socket.emit("connected", {
+        partnerName: waitingUser.name,
+        partnerLocation: waitingUser.location,
+        isCaller: false
+      });
+
+      waitingUser = null;
+    } else {
+      waitingUser = socket;
+    }
+  });
+
   socket.on("offer", (offer) => {
     if (socket.partner) {
       socket.partner.emit("offer", offer);
@@ -29,64 +56,10 @@ io.on("connection", (socket) => {
       socket.partner.emit("ice-candidate", candidate);
     }
   });
-  console.log("User connected:", socket.id);
-
-  socket.on("userInfo", (data) => {
-    socket.name = data.name;
-    socket.location = data.location;
-
-    if (waitingUser) {
-      socket.partner = waitingUser;
-      waitingUser.partner = socket;
-
-      socket.emit("connected", {
-        partnerName: waitingUser.name,
-        partnerLocation: waitingUser.location
-      });
-
-      waitingUser.emit("connected", {
-        partnerName: socket.name,
-        partnerLocation: socket.location
-      });
-
-      waitingUser = null;
-    } else {
-      waitingUser = socket;
-    }
-  });
 
   socket.on("message", (msg) => {
     if (socket.partner) {
       socket.partner.emit("message", msg);
-    }
-  });
-
-  socket.on("skip", () => {
-    if (socket.partner) {
-      socket.partner.emit("partnerDisconnected");
-      socket.partner.partner = null;
-    }
-
-    socket.partner = null;
-
-    if (waitingUser && waitingUser !== socket) {
-      // If someone is already waiting, connect them
-      socket.partner = waitingUser;
-      waitingUser.partner = socket;
-
-      socket.emit("connected", {
-        partnerName: waitingUser.name,
-        partnerLocation: waitingUser.location
-      });
-
-      waitingUser.emit("connected", {
-        partnerName: socket.name,
-        partnerLocation: socket.location
-      });
-
-      waitingUser = null;
-    } else {
-      waitingUser = socket;
     }
   });
 
@@ -95,7 +68,6 @@ io.on("connection", (socket) => {
       socket.partner.emit("partnerDisconnected");
       socket.partner.partner = null;
     }
-
     if (waitingUser === socket) {
       waitingUser = null;
     }
@@ -103,7 +75,6 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-
 server.listen(PORT, () => {
   console.log("Server running on port " + PORT);
 });
