@@ -67,7 +67,10 @@
 
   <div id="chat">
     <h3 id="status">Waiting...</h3>
-
+<div id="videos" style="display:none;">
+  <video id="localVideo" autoplay muted playsinline></video>
+  <video id="remoteVideo" autoplay playsinline></video>
+</div>
     <div id="videos">
       <video id="localVideo" autoplay muted playsinline></video>
       <video id="remoteVideo" autoplay playsinline></video>
@@ -95,19 +98,36 @@ const servers = {
   ]
 };
 
-async function start() {
-  document.getElementById("consent").style.display = "none";
-  document.getElementById("chat").style.display = "block";
+const consent = document.getElementById("consent");
+const chat = document.getElementById("chat");
+const status = document.getElementById("status");
+const messages = document.getElementById("messages");
 
-  localStream = await navigator.mediaDevices.getUserMedia({
-    video: true,
-    audio: true
-  });
+let myName = "";
+let myLocation = "";
 
-  document.getElementById("localVideo").srcObject = localStream;
-  document.getElementById("videos").style.display = "flex";
+function start() {
+  const nameInput = document.getElementById("username").value.trim();
+  const locationInput = document.getElementById("location").value.trim();
+  const acknowledge = document.getElementById("acknowledge").checked;
 
-  socket.emit("userInfo", { name: "User", location: "Unknown" });
+  if (!acknowledge) {
+    alert("Please confirm the acknowledgement before entering.");
+    return;
+  }
+
+  if (!nameInput || !locationInput) {
+    alert("Please enter your name and location.");
+    return;
+  }
+
+  myName = nameInput;
+  myLocation = locationInput;
+
+  consent.style.display = "none";
+  chat.style.display = "block";
+
+  socket.emit("userInfo", { name: myName, location: myLocation });
 }
 
 function createPeer() {
@@ -128,8 +148,20 @@ function createPeer() {
   };
 }
 
-socket.on("connected", async () => {
+socket.on("connected", async (data) => {
+  status.innerText = "Connected with " + data.partnerName;
+
+  // Start camera ONLY after match
+  localStream = await navigator.mediaDevices.getUserMedia({
+    video: true,
+    audio: true
+  });
+
+  document.getElementById("localVideo").srcObject = localStream;
+  document.getElementById("videos").style.display = "flex";
+
   createPeer();
+
   const offer = await peerConnection.createOffer();
   await peerConnection.setLocalDescription(offer);
   socket.emit("offer", offer);
@@ -138,6 +170,7 @@ socket.on("connected", async () => {
 socket.on("offer", async offer => {
   createPeer();
   await peerConnection.setRemoteDescription(offer);
+
   const answer = await peerConnection.createAnswer();
   await peerConnection.setLocalDescription(answer);
   socket.emit("answer", answer);
@@ -148,23 +181,14 @@ socket.on("answer", async answer => {
 });
 
 socket.on("ice-candidate", async candidate => {
-  await peerConnection.addIceCandidate(candidate);
+  if (peerConnection) {
+    await peerConnection.addIceCandidate(candidate);
+  }
 });
 
-function send() {
-  const input = document.getElementById("input");
-  socket.emit("message", input.value);
-  document.getElementById("messages").innerHTML += "<div>You: " + input.value + "</div>";
-  input.value = "";
-}
-
-socket.on("message", msg => {
-  document.getElementById("messages").innerHTML += "<div>Stranger: " + msg + "</div>";
-});
-
-function skip() {
+socket.on("partnerDisconnected", () => {
   location.reload();
-}
+});
 </script>
 
 </body>
