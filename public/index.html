@@ -2,6 +2,12 @@
 <html>
 <head>
   <title>QuietConnect</title>
+
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,
+  <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
+    <text y='70' font-size='70'>🌿🌴</text>
+  </svg>">
+
   <style>
     body {
       margin: 0;
@@ -15,11 +21,48 @@
 
     .card {
       background: white;
-      width: 500px;
+      width: 520px;
       padding: 20px;
       border-radius: 12px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.08);
       text-align: center;
+    }
+
+    h2 { margin: 10px 0; }
+
+    .disclaimer {
+      font-size: 13px;
+      text-align: left;
+      line-height: 1.6;
+      color: #444;
+      margin-bottom: 10px;
+    }
+
+    input {
+      width: 90%;
+      padding: 8px;
+      margin: 6px 0;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      padding: 8px 14px;
+      margin: 5px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+    }
+
+    .primary { background: #4a90e2; color: white; }
+    .secondary { background: #ddd; }
+
+    #chat { display: none; }
+
+    #videos {
+      display: none;
+      justify-content: center;
+      margin: 10px 0;
     }
 
     video {
@@ -30,47 +73,67 @@
       margin: 5px;
     }
 
-    #videos {
-      display: none;
-      justify-content: center;
-    }
-
-    #chat {
-      display: none;
-    }
-
     #messages {
       height: 120px;
       overflow-y: auto;
       background: #f7f9fc;
       border-radius: 8px;
       padding: 8px;
-      margin: 10px 0;
       text-align: left;
+      margin: 10px 0;
+      font-size: 14px;
     }
 
-    input { padding: 8px; margin: 5px; width: 80%; }
-    button { padding: 8px 15px; margin: 5px; cursor: pointer; }
+    #status {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 8px;
+    }
+
   </style>
 </head>
+
 <body>
 
 <div class="card">
 
+  <!-- ENTRY SCREEN -->
   <div id="consent">
-    <h2>QuietConnect 🌿🌴</h2>
-    <p>Video space for shy adults (18+)</p>
-    <input id="username" placeholder="Your name" />
-    <input id="location" placeholder="Your location" />
-    <button onclick="start()">Enter</button>
+    <h2>🌿 QuietConnect 🌴</h2>
+
+    <div class="disclaimer">
+      The world is filled with different personalities.  
+      Many people are naturally shy or experience social anxiety.  
+      For some, starting conversations or meeting new people can feel overwhelming.
+      <br><br>
+      QuietConnect is a calm and respectful space created for adults (18+) 
+      who want to take a small, brave step forward.  
+      Here, you can talk to someone from a different background — 
+      someone who, like you, also wants to grow.
+      <br><br>
+      Start simply by sharing your name and where you're from.  
+      You may skip anytime if you feel uncomfortable.
+    </div>
+
+    <label style="font-size:13px;">
+      <input type="checkbox" id="acknowledge">
+      I confirm that I am 18+ and I am choosing to take a positive step forward.
+    </label>
+
+    <br>
+
+    <input id="username" placeholder="Your name">
+    <input id="location" placeholder="Your location">
+
+    <button class="primary" onclick="start()">Enter QuietConnect</button>
   </div>
 
+  <!-- CHAT + VIDEO SCREEN -->
   <div id="chat">
-    <h3 id="status">Waiting...</h3>
-<div id="videos" style="display:none;">
-  <video id="localVideo" autoplay muted playsinline></video>
-  <video id="remoteVideo" autoplay playsinline></video>
-</div>
+    <h2>🌿 QuietConnect 🌴</h2>
+
+    <div id="status">Waiting for partner...</div>
+
     <div id="videos">
       <video id="localVideo" autoplay muted playsinline></video>
       <video id="remoteVideo" autoplay playsinline></video>
@@ -78,9 +141,9 @@
 
     <div id="messages"></div>
 
-    <input id="input" placeholder="Type message..." />
-    <button onclick="send()">Send</button>
-    <button onclick="skip()">Skip</button>
+    <input id="input" placeholder="Type message...">
+    <button class="primary" onclick="send()">Send</button>
+    <button class="secondary" onclick="skip()">Skip</button>
   </div>
 
 </div>
@@ -91,6 +154,7 @@ const socket = io();
 
 let localStream;
 let peerConnection;
+let isCaller = false;
 
 const servers = {
   iceServers: [
@@ -103,31 +167,35 @@ const chat = document.getElementById("chat");
 const status = document.getElementById("status");
 const messages = document.getElementById("messages");
 
-let myName = "";
-let myLocation = "";
-
 function start() {
-  const nameInput = document.getElementById("username").value.trim();
-  const locationInput = document.getElementById("location").value.trim();
-  const acknowledge = document.getElementById("acknowledge").checked;
+  const name = document.getElementById("username").value.trim();
+  const location = document.getElementById("location").value.trim();
+  const ack = document.getElementById("acknowledge").checked;
 
-  if (!acknowledge) {
-    alert("Please confirm the acknowledgement before entering.");
+  if (!ack) {
+    alert("Please confirm acknowledgement.");
     return;
   }
 
-  if (!nameInput || !locationInput) {
-    alert("Please enter your name and location.");
+  if (!name || !location) {
+    alert("Please enter name and location.");
     return;
   }
-
-  myName = nameInput;
-  myLocation = locationInput;
 
   consent.style.display = "none";
   chat.style.display = "block";
 
-  socket.emit("userInfo", { name: myName, location: myLocation });
+  socket.emit("userInfo", { name, location });
+}
+
+async function initMedia() {
+  localStream = await navigator.mediaDevices.getUserMedia({
+    video: true,
+    audio: true
+  });
+
+  document.getElementById("localVideo").srcObject = localStream;
+  document.getElementById("videos").style.display = "flex";
 }
 
 function createPeer() {
@@ -137,11 +205,11 @@ function createPeer() {
     peerConnection.addTrack(track, localStream);
   });
 
-  peerConnection.ontrack = event => {
+  peerConnection.ontrack = (event) => {
     document.getElementById("remoteVideo").srcObject = event.streams[0];
   };
 
-  peerConnection.onicecandidate = event => {
+  peerConnection.onicecandidate = (event) => {
     if (event.candidate) {
       socket.emit("ice-candidate", event.candidate);
     }
@@ -149,46 +217,60 @@ function createPeer() {
 }
 
 socket.on("connected", async (data) => {
-  status.innerText = "Connected with " + data.partnerName;
+  status.innerText = "Connected with " + data.partnerName + " from " + data.partnerLocation;
 
-  // Start camera ONLY after match
-  localStream = await navigator.mediaDevices.getUserMedia({
-    video: true,
-    audio: true
-  });
-
-  document.getElementById("localVideo").srcObject = localStream;
-  document.getElementById("videos").style.display = "flex";
-
+  await initMedia();
   createPeer();
+
+  // First user becomes caller
+  isCaller = true;
 
   const offer = await peerConnection.createOffer();
   await peerConnection.setLocalDescription(offer);
   socket.emit("offer", offer);
 });
 
-socket.on("offer", async offer => {
+socket.on("offer", async (offer) => {
+  await initMedia();
   createPeer();
-  await peerConnection.setRemoteDescription(offer);
 
+  await peerConnection.setRemoteDescription(offer);
   const answer = await peerConnection.createAnswer();
   await peerConnection.setLocalDescription(answer);
   socket.emit("answer", answer);
 });
 
-socket.on("answer", async answer => {
+socket.on("answer", async (answer) => {
   await peerConnection.setRemoteDescription(answer);
 });
 
-socket.on("ice-candidate", async candidate => {
+socket.on("ice-candidate", async (candidate) => {
   if (peerConnection) {
     await peerConnection.addIceCandidate(candidate);
   }
 });
 
+socket.on("message", (msg) => {
+  messages.innerHTML += "<div>Stranger: " + msg + "</div>";
+});
+
 socket.on("partnerDisconnected", () => {
   location.reload();
 });
+
+function send() {
+  const input = document.getElementById("input");
+  const text = input.value.trim();
+  if (!text) return;
+
+  socket.emit("message", text);
+  messages.innerHTML += "<div>You: " + text + "</div>";
+  input.value = "";
+}
+
+function skip() {
+  location.reload();
+}
 </script>
 
 </body>
