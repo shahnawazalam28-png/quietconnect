@@ -131,8 +131,12 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
 const socket = io();
+
 let localStream;
-let peerConnection;
+let pc;
+let isPolite = false;
+let makingOffer = false;
+let ignoreOffer = false;
 
 const servers = {
   iceServers: [
@@ -170,21 +174,33 @@ async function initMedia() {
 }
 
 function createPeer() {
-  peerConnection = new RTCPeerConnection(servers);
+  pc = new RTCPeerConnection(servers);
 
-  localStream.getTracks().forEach(track => {
-    peerConnection.addTrack(track, localStream);
-  });
+  localStream.getTracks().forEach(track =>
+    pc.addTrack(track, localStream)
+  );
 
-  peerConnection.ontrack = (event) => {
+  pc.ontrack = (event) => {
     const remoteVideo = document.getElementById("remoteVideo");
     remoteVideo.srcObject = event.streams[0];
     remoteVideo.play().catch(()=>{});
   };
 
-  peerConnection.onicecandidate = (event) => {
+  pc.onicecandidate = (event) => {
     if (event.candidate) {
       socket.emit("ice-candidate", event.candidate);
+    }
+  };
+
+  pc.onnegotiationneeded = async () => {
+    try {
+      makingOffer = true;
+      await pc.setLocalDescription(await pc.createOffer());
+      socket.emit("offer", pc.localDescription);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      makingOffer = false;
     }
   };
 }
@@ -193,38 +209,34 @@ socket.on("connected", async (data) => {
   document.getElementById("status").innerText =
     "Connected with " + data.partnerName;
 
+  isPolite = !data.isCaller;
+
   await initMedia();
   createPeer();
-
-  if (data.isCaller) {
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-    socket.emit("offer", offer);
-  }
 });
 
 socket.on("offer", async (offer) => {
-  await initMedia();
-  createPeer();
+  const offerCollision =
+    makingOffer || pc.signalingState !== "stable";
 
-  await peerConnection.setRemoteDescription(offer);
-  const answer = await peerConnection.createAnswer();
-  await peerConnection.setLocalDescription(answer);
-  socket.emit("answer", answer);
+  ignoreOffer = !isPolite && offerCollision;
+  if (ignoreOffer) return;
+
+  await pc.setRemoteDescription(offer);
+  await pc.setLocalDescription(await pc.createAnswer());
+  socket.emit("answer", pc.localDescription);
 });
 
 socket.on("answer", async (answer) => {
-  await peerConnection.setRemoteDescription(answer);
+  await pc.setRemoteDescription(answer);
 });
 
 socket.on("ice-candidate", async (candidate) => {
-  if (peerConnection) {
-    await peerConnection.addIceCandidate(candidate);
+  try {
+    await pc.addIceCandidate(candidate);
+  } catch (err) {
+    if (!ignoreOffer) console.error(err);
   }
-});
-
-socket.on("message", (msg) => {
-  document.getElementById("messages").innerHTML += "<div>Stranger: " + msg + "</div>";
 });
 
 socket.on("partnerDisconnected", () => {
@@ -232,13 +244,8 @@ socket.on("partnerDisconnected", () => {
 });
 
 function cleanup() {
-  if (peerConnection) {
-    peerConnection.close();
-    peerConnection = null;
-  }
-  if (localStream) {
-    localStream.getTracks().forEach(track => track.stop());
-  }
+  if (pc) pc.close();
+  if (localStream) localStream.getTracks().forEach(t => t.stop());
 
   document.getElementById("videos").style.display = "none";
   document.getElementById("remoteVideo").srcObject = null;
