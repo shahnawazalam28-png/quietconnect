@@ -11,6 +11,24 @@ app.use(express.static("public"));
 let waitingUser = null;
 
 io.on("connection", (socket) => {
+  // WebRTC signaling
+  socket.on("offer", (offer) => {
+    if (socket.partner) {
+      socket.partner.emit("offer", offer);
+    }
+  });
+
+  socket.on("answer", (answer) => {
+    if (socket.partner) {
+      socket.partner.emit("answer", answer);
+    }
+  });
+
+  socket.on("ice-candidate", (candidate) => {
+    if (socket.partner) {
+      socket.partner.emit("ice-candidate", candidate);
+    }
+  });
   console.log("User connected:", socket.id);
 
   socket.on("userInfo", (data) => {
